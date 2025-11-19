@@ -43,7 +43,7 @@ export default function ResultsSummary({ results, originalFileName, onNewCheck }
 
           <div className="d-flex flex-column flex-md-row gap-3 justify-content-center">
             <button
-              className="btn btn-success"
+              className="btn btn-success flex-grow-1"
               onClick={handleDownloadValid}
               disabled={validNumbers.length === 0}
             >
@@ -51,7 +51,7 @@ export default function ResultsSummary({ results, originalFileName, onNewCheck }
               Baixar Números Válidos
             </button>
             <button
-              className="btn btn-danger"
+              className="btn btn-danger flex-grow-1"
               onClick={handleDownloadInvalid}
               disabled={invalidNumbers.length === 0}
             >
@@ -59,7 +59,7 @@ export default function ResultsSummary({ results, originalFileName, onNewCheck }
               Baixar Números Inválidos
             </button>
             <button
-              className="btn btn-outline-primary"
+              className="btn btn-outline-primary flex-grow-1"
               onClick={onNewCheck}
             >
               <i className="ti ti-refresh me-2"></i>
