@@ -1,0 +1,45 @@
+/* Importar estilos do tema Modernize */
+@import './assets/css/styles.min.css';
+
+/* Customizações específicas */
+body {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bs-gray-100);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Ajustes para o card de upload */
+.border-dashed {
+  border-style: dashed !important;
+  border-width: 2px !important;
+}
+
+/* Ajustes para os cards de resumo */
+.bg-light-success {
+  background-color: var(--bs-light-success) !important;
+}
+
+.bg-light-danger {
+  background-color: var(--bs-light-danger) !important;
+}
+
+/* Ajustes de responsividade */
+@media (max-width: 768px) {
+  .container-fluid {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  h1 {
+    font-size: 1.75rem;
+  }
+}
+
