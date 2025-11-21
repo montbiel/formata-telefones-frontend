@@ -1,18 +1,21 @@
 /**
- * Gera CSV de números válidos para download
+ * Gera CSV de números formatados para download
  */
-export function generateValidCSV(validNumbers, originalFileName) {
+export function generateFormattedCSV(formattedNumbers, originalFileName) {
   const header = ['Número Formatado'];
-  const rows = validNumbers.map(item => [item.formatted]);
+  // Filtra valores vazios ou undefined antes de gerar o CSV
+  const rows = formattedNumbers
+    .filter(item => item && item.formatted && String(item.formatted).trim())
+    .map(item => [item.formatted]);
   
   const csvContent = [
     header.join(','),
     ...rows.map(row => row.join(','))
   ].join('\n');
   
-  // Remove extensão do nome original e adiciona "_validos.csv"
+  // Remove extensão do nome original e adiciona "_formatados.csv"
   const baseName = originalFileName.replace(/\.csv$/i, '');
-  const fileName = `${baseName}_validos.csv`;
+  const fileName = `${baseName}_formatados.csv`;
   
   return { csvContent, fileName };
 }

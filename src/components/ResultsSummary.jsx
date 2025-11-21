@@ -1,11 +1,13 @@
-import { generateValidCSV, generateInvalidCSV, downloadCSV } from '../utils/csvGenerator';
+import { generateFormattedCSV, generateInvalidCSV, downloadCSV } from '../utils/csvGenerator';
 
 export default function ResultsSummary({ results, originalFileName, onNewCheck }) {
-  const { validNumbers, invalidNumbers } = results;
-  const total = validNumbers.length + invalidNumbers.length;
+  const { formattedNumbers, invalidNumbers } = results;
+  // O total deve ser apenas formattedNumbers.length, pois esse array já contém todos os números processados
+  // (incluindo os inválidos que são mantidos como original)
+  const total = formattedNumbers.length;
 
-  const handleDownloadValid = () => {
-    const { csvContent, fileName } = generateValidCSV(validNumbers, originalFileName);
+  const handleDownloadFormatted = () => {
+    const { csvContent, fileName } = generateFormattedCSV(formattedNumbers, originalFileName);
     downloadCSV(csvContent, fileName);
   };
 
@@ -29,8 +31,8 @@ export default function ResultsSummary({ results, originalFileName, onNewCheck }
             </div>
             <div className="col-md-4">
               <div className="text-center p-3 bg-light-success rounded">
-                <h3 className="text-success mb-1">{validNumbers.length}</h3>
-                <p className="text-muted mb-0">Válidos</p>
+                <h3 className="text-success mb-1">{formattedNumbers.length}</h3>
+                <p className="text-muted mb-0">Formatados</p>
               </div>
             </div>
             <div className="col-md-4">
@@ -44,11 +46,11 @@ export default function ResultsSummary({ results, originalFileName, onNewCheck }
           <div className="d-flex flex-column flex-md-row gap-3 justify-content-center">
             <button
               className="btn btn-success flex-grow-1"
-              onClick={handleDownloadValid}
-              disabled={validNumbers.length === 0}
+              onClick={handleDownloadFormatted}
+              disabled={formattedNumbers.length === 0}
             >
               <i className="ti ti-download me-2"></i>
-              Baixar Números Válidos
+              Baixar Números Formatados
             </button>
             <button
               className="btn btn-danger flex-grow-1"

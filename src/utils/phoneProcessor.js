@@ -27,12 +27,23 @@ export function cleanNumber(numberStr) {
 }
 
 /**
+ * Verifica se o número já está formatado corretamente (55 + DDD válido + número)
+ */
+export function isAlreadyFormatted(cleanedNumber) {
+  if (cleanedNumber.length === 13 && cleanedNumber.startsWith('55')) {
+    const dddPart = cleanedNumber.substring(2, 4);
+    return isValidBrazilianDDD(dddPart);
+  }
+  return false;
+}
+
+/**
  * Processa os números de telefone do CSV.
  * @param {Array} csvData - Array de linhas do CSV
- * @returns {Object} Objeto com arrays de números válidos e inválidos
+ * @returns {Object} Objeto com arrays de números formatados e inválidos
  */
 export function processPhoneNumbers(csvData) {
-  const validNumbers = [];
+  const formattedNumbers = [];
   const invalidNumbers = [];
   let lineNum = 0;
   
@@ -63,151 +74,99 @@ export function processPhoneNumbers(csvData) {
     // Limpa o número removendo caracteres não numéricos
     const cleanedNumber = cleanNumber(trimmedNumber);
     
-    // Verifica se o número tem 11 dígitos
+    // Se após limpar não sobrou nenhum dígito, pula esta linha
+    if (!cleanedNumber || cleanedNumber.length === 0) {
+      return;
+    }
+    
+    // Verifica se o número já está formatado corretamente
+    if (isAlreadyFormatted(cleanedNumber)) {
+      // Número já está formatado, mantém como está
+      formattedNumbers.push({
+        original: trimmedNumber,
+        formatted: cleanedNumber,
+        line: lineNum
+      });
+      return;
+    }
+    
+    // Tenta formatar o número
+    let formattedNumber = null;
+    let canFormat = false;
+    
     if (cleanedNumber.length === 11) {
       // Número com 11 dígitos (DDD + número) - precisa adicionar código do país
       if (isValidBrazilianDDD(cleanedNumber)) {
-        const formattedNumber = `55${cleanedNumber}`;
-        validNumbers.push({
-          original: trimmedNumber,
-          formatted: formattedNumber,
-          line: lineNum
-        });
-      } else {
-        invalidNumbers.push({
-          number: trimmedNumber,
-          reason: `DDD inválido (${cleanedNumber.substring(0, 2)})`,
-          line: lineNum
-        });
+        formattedNumber = `55${cleanedNumber}`;
+        canFormat = true;
       }
     } else if (cleanedNumber.length === 13) {
-      // Número com 13 dígitos - pode já estar formatado com código do país
-      if (cleanedNumber.startsWith('55')) {
-        // Verifica se o DDD (posições 2-3) é válido
-        const dddPart = cleanedNumber.substring(2, 4);
-        if (isValidBrazilianDDD(dddPart)) {
-          // Número já está formatado corretamente
-          validNumbers.push({
-            original: trimmedNumber,
-            formatted: cleanedNumber,
-            line: lineNum
-          });
-        } else {
-          invalidNumbers.push({
-            number: trimmedNumber,
-            reason: `DDD inválido (${dddPart})`,
-            line: lineNum
-          });
-        }
-      } else {
-        // Número de 13 dígitos que não começa com 55 - verifica se tem DDD válido
-        const dddPart = cleanedNumber.substring(0, 2);
-        if (isValidBrazilianDDD(dddPart)) {
-          // Aceita e adiciona código do país se necessário
-          const formattedNumber = cleanedNumber.startsWith('55') ? cleanedNumber : `55${cleanedNumber}`;
-          // Verifica se após adicionar 55 não ultrapassa 13 dígitos
-          if (formattedNumber.length === 13) {
-            validNumbers.push({
-              original: trimmedNumber,
-              formatted: formattedNumber,
-              line: lineNum
-            });
-          } else {
-            invalidNumbers.push({
-              number: trimmedNumber,
-              reason: `Tamanho inválido após formatação (${formattedNumber.length} dígitos)`,
-              line: lineNum
-            });
-          }
-        } else {
-          invalidNumbers.push({
-            number: trimmedNumber,
-            reason: `DDD inválido (${dddPart})`,
-            line: lineNum
-          });
-        }
+      // Número com 13 dígitos que não começa com 55 - não pode adicionar 55 (ficaria com 15 dígitos)
+      // Mantém como está se parecer válido, senão vai para a lógica de manter original
+      const dddPart = cleanedNumber.substring(0, 2);
+      if (isValidBrazilianDDD(dddPart)) {
+        // Parece ser um número válido mas não no formato brasileiro padrão, mantém como está
+        formattedNumber = cleanedNumber;
+        canFormat = true;
       }
     } else if (cleanedNumber.length === 12) {
-      // Número com 12 dígitos - pode ser número brasileiro com código de país diferente ou formato especial
+      // Número com 12 dígitos
       if (cleanedNumber.startsWith('55')) {
-        // Se começa com 55 mas tem 12 dígitos, pode estar faltando um dígito ou ter formato incorreto
-        // Verifica se o DDD (posições 2-3) é válido
         const dddPart = cleanedNumber.substring(2, 4);
         if (isValidBrazilianDDD(dddPart)) {
-          // Aceita como válido mesmo com 12 dígitos (pode ser número especial ou formato alternativo)
-          validNumbers.push({
-            original: trimmedNumber,
-            formatted: cleanedNumber,
-            line: lineNum
-          });
-        } else {
-          invalidNumbers.push({
-            number: trimmedNumber,
-            reason: `DDD inválido (${dddPart})`,
-            line: lineNum
-          });
+          formattedNumber = cleanedNumber;
+          canFormat = true;
         }
       } else {
-        // Verifica se começa com DDD válido
         const dddPart = cleanedNumber.substring(0, 2);
         if (isValidBrazilianDDD(dddPart)) {
-          // Adiciona código do país
-          const formattedNumber = `55${cleanedNumber}`;
-          // Verifica se após adicionar não ultrapassa 13 dígitos
-          if (formattedNumber.length === 14) {
-            // Se ficou com 14 dígitos, pode ser que precise remover um dígito ou é formato especial
-            // Aceita mesmo assim se o DDD for válido
-            validNumbers.push({
-              original: trimmedNumber,
-              formatted: formattedNumber,
-              line: lineNum
-            });
-          } else {
-            validNumbers.push({
-              original: trimmedNumber,
-              formatted: formattedNumber,
-              line: lineNum
-            });
-          }
-        } else {
-          invalidNumbers.push({
-            number: trimmedNumber,
-            reason: `DDD inválido (${dddPart})`,
-            line: lineNum
-          });
+          formattedNumber = `55${cleanedNumber}`;
+          canFormat = true;
         }
       }
     } else if (cleanedNumber.length === 10) {
       // Número com 10 dígitos (antigo formato sem o 9)
       const dddPart = cleanedNumber.substring(0, 2);
       if (isValidBrazilianDDD(dddPart)) {
-        // Adiciona o 9 e o código do país
-        const formattedNumber = `55${cleanedNumber.substring(0, 2)}9${cleanedNumber.substring(2)}`;
-        validNumbers.push({
-          original: trimmedNumber,
-          formatted: formattedNumber,
-          line: lineNum
-        });
-      } else {
-        invalidNumbers.push({
-          number: trimmedNumber,
-          reason: `DDD inválido (${dddPart})`,
-          line: lineNum
-        });
+        formattedNumber = `55${cleanedNumber.substring(0, 2)}9${cleanedNumber.substring(2)}`;
+        canFormat = true;
       }
-    } else if (cleanedNumber.length > 0) {
+    }
+    
+    if (canFormat && formattedNumber) {
+      // Conseguiu formatar, adiciona aos formatados
+      formattedNumbers.push({
+        original: trimmedNumber,
+        formatted: formattedNumber,
+        line: lineNum
+      });
+    } else {
+      // Não foi possível formatar, mantém o original na planilha de formatados
+      // mas também adiciona aos inválidos para a outra planilha
+      const reason = cleanedNumber.length < 10 
+        ? `Menos de 10 dígitos (${cleanedNumber.length})` 
+        : cleanedNumber.length > 13
+        ? `Mais de 13 dígitos (${cleanedNumber.length})`
+        : cleanedNumber.length >= 2 && !isValidBrazilianDDD(cleanedNumber)
+        ? `DDD inválido (${cleanedNumber.substring(0, 2)})`
+        : `Tamanho inválido (${cleanedNumber.length} dígitos)`;
+      
+      formattedNumbers.push({
+        original: trimmedNumber,
+        formatted: trimmedNumber, // Mantém o original
+        line: lineNum
+      });
+      
       invalidNumbers.push({
         number: trimmedNumber,
-        reason: cleanedNumber.length < 10 
-          ? `Menos de 10 dígitos (${cleanedNumber.length})` 
-          : `Tamanho inválido (${cleanedNumber.length} dígitos)`,
+        reason: reason,
         line: lineNum
       });
     }
   });
   
   return {
-    validNumbers,
+    formattedNumbers,
     invalidNumbers
   };
 }
