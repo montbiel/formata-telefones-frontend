@@ -112,9 +112,11 @@ export function processPhoneNumbers(csvData) {
     } else if (cleanedNumber.length === 12) {
       // Número com 12 dígitos
       if (cleanedNumber.startsWith('55')) {
+        // Formato: 55 + DDD (2) + número com 8 dígitos (ainda sem o 9)
         const dddPart = cleanedNumber.substring(2, 4);
         if (isValidBrazilianDDD(dddPart)) {
-          formattedNumber = cleanedNumber;
+          // Adiciona o 9 após o DDI (55) + DDD, padronizando para 13 dígitos
+          formattedNumber = `55${dddPart}9${cleanedNumber.substring(4)}`;
           canFormat = true;
         }
       } else {
