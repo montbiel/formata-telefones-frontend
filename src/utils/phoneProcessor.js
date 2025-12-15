@@ -109,6 +109,18 @@ export function processPhoneNumbers(csvData) {
         formattedNumber = cleanedNumber;
         canFormat = true;
       }
+    } else if (cleanedNumber.length === 14) {
+      // Número com 14 dígitos – possível caso de dois "9" após o DDD (ex.: 55 + DDD + 99 + 8 dígitos)
+      if (cleanedNumber.startsWith('55')) {
+        const dddPart = cleanedNumber.substring(2, 4);
+        const afterDDD = cleanedNumber.substring(4);
+
+        if (isValidBrazilianDDD(dddPart) && /^9{2,}/.test(afterDDD)) {
+          // Remove apenas um "9" após o DDI + DDD, ficando com 55 + DDD + 9 + 8 dígitos (13 no total)
+          formattedNumber = `55${dddPart}${afterDDD.substring(1)}`;
+          canFormat = true;
+        }
+      }
     } else if (cleanedNumber.length === 12) {
       // Número com 12 dígitos
       if (cleanedNumber.startsWith('55')) {
