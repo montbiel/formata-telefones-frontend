@@ -27,14 +27,108 @@ export function cleanNumber(numberStr) {
 }
 
 /**
- * Verifica se o número já está formatado corretamente (55 + DDD válido + número)
+ * Verifica se o número já está formatado corretamente (55 + DDD válido + 9 + 8 dígitos)
  */
 export function isAlreadyFormatted(cleanedNumber) {
   if (cleanedNumber.length === 13 && cleanedNumber.startsWith('55')) {
     const dddPart = cleanedNumber.substring(2, 4);
-    return isValidBrazilianDDD(dddPart);
+    const afterDDD = cleanedNumber.substring(4);
+    // Verifica se tem DDD válido, se o 5º dígito é 9, e se tem 8 dígitos restantes
+    return isValidBrazilianDDD(dddPart) && afterDDD.length === 9 && afterDDD[0] === '9';
   }
   return false;
+}
+
+/**
+ * Analisa e formata um número de telefone para o padrão: 55 + DDD + 9 + 8 dígitos
+ * @param {string} cleanedNumber - Número limpo (apenas dígitos)
+ * @returns {string|null} - Número formatado ou null se não for possível formatar
+ */
+export function formatPhoneNumber(cleanedNumber) {
+  const length = cleanedNumber.length;
+  
+  if (length === 10) {
+    // 10 dígitos: DDD + 8 dígitos (antigo formato sem o 9)
+    const dddPart = cleanedNumber.substring(0, 2);
+    if (isValidBrazilianDDD(dddPart)) {
+      // Adiciona 55 + DDD + 9 + 8 dígitos
+      return `55${dddPart}9${cleanedNumber.substring(2)}`;
+    }
+  } else if (length === 11) {
+    // 11 dígitos: DDD + número (já com 9 dígitos) - precisa adicionar código do país
+    if (isValidBrazilianDDD(cleanedNumber)) {
+      // Apenas adiciona 55, não mexe no 9 (mesmo que tenha dois 9 naturalmente)
+      return `55${cleanedNumber}`;
+    }
+  } else if (length === 12) {
+    // 12 dígitos
+    if (cleanedNumber.startsWith('55')) {
+      // Formato: 55 + DDD (2) + número com 8 dígitos (ainda sem o 9)
+      const dddPart = cleanedNumber.substring(2, 4);
+      if (isValidBrazilianDDD(dddPart)) {
+        // Adiciona o 9 após o DDI (55) + DDD, padronizando para 13 dígitos
+        return `55${dddPart}9${cleanedNumber.substring(4)}`;
+      }
+    } else {
+      // Número sem o 55: DDD (2) + número (10 dígitos)
+      const dddPart = cleanedNumber.substring(0, 2);
+      const afterDDD = cleanedNumber.substring(2);
+      
+      if (isValidBrazilianDDD(dddPart)) {
+        // Verifica se há dois ou mais 9 após o DDD
+        if (/^9{2,}/.test(afterDDD)) {
+          // Tem 9 duplicado: remove um 9 e adiciona 55
+          // Resultado: 55 + DDD + 9 + 8 dígitos = 13 dígitos
+          const correctedAfterDDD = afterDDD.substring(1); // Remove um 9
+          return `55${dddPart}${correctedAfterDDD}`;
+        }
+        // Se não tem 9 duplicado, não processa (retorna null - mantém como original)
+      }
+    }
+  } else if (length === 13) {
+    // 13 dígitos
+    if (cleanedNumber.startsWith('55')) {
+      // Verifica se está formatado corretamente (já verificado em isAlreadyFormatted)
+      // Mas se não passou em isAlreadyFormatted, verifica DDD antes de retornar
+      const dddPart = cleanedNumber.substring(2, 4);
+      if (isValidBrazilianDDD(dddPart)) {
+        return cleanedNumber;
+      }
+      // DDD inválido, não retorna
+      return null;
+    } else {
+      // Número com 13 dígitos que não começa com 55
+      const dddPart = cleanedNumber.substring(0, 2);
+      if (isValidBrazilianDDD(dddPart)) {
+        // Parece ser um número válido mas não no formato brasileiro padrão, mantém como está
+        return cleanedNumber;
+      }
+    }
+  } else if (length === 14) {
+    // 14 dígitos – APENAS este caso verifica e remove 9 duplicado
+    if (cleanedNumber.startsWith('55')) {
+      const dddPart = cleanedNumber.substring(2, 4);
+      const afterDDD = cleanedNumber.substring(4);
+      
+      if (isValidBrazilianDDD(dddPart)) {
+        // Verifica se há 9 duplicado NO INÍCIO após o DDD (dois ou mais 9 em sequência)
+        const hasDuplicate9 = /^9{2,}/.test(afterDDD);
+        if (hasDuplicate9) {
+          // Remove apenas um "9" após o DDI + DDD, ficando com 55 + DDD + 9 + 8 dígitos (13 no total)
+          const corrected = `55${dddPart}${afterDDD.substring(1)}`;
+          // Garante que o resultado tem exatamente 13 dígitos
+          if (corrected.length === 13) {
+            return corrected;
+          }
+        }
+        // Se tem DDD válido mas não tem 9 duplicado, não processa (retorna null)
+      }
+      // Se não tem DDD válido, não processa (retorna null)
+    }
+    // Se não começa com 55, não processa (retorna null)
+  }
+  
+  return null;
 }
 
 /**
@@ -90,64 +184,10 @@ export function processPhoneNumbers(csvData) {
       return;
     }
     
-    // Tenta formatar o número
-    let formattedNumber = null;
-    let canFormat = false;
+    // Tenta formatar o número usando a lógica sistemática
+    const formattedNumber = formatPhoneNumber(cleanedNumber);
     
-    if (cleanedNumber.length === 11) {
-      // Número com 11 dígitos (DDD + número) - precisa adicionar código do país
-      if (isValidBrazilianDDD(cleanedNumber)) {
-        formattedNumber = `55${cleanedNumber}`;
-        canFormat = true;
-      }
-    } else if (cleanedNumber.length === 13) {
-      // Número com 13 dígitos que não começa com 55 - não pode adicionar 55 (ficaria com 15 dígitos)
-      // Mantém como está se parecer válido, senão vai para a lógica de manter original
-      const dddPart = cleanedNumber.substring(0, 2);
-      if (isValidBrazilianDDD(dddPart)) {
-        // Parece ser um número válido mas não no formato brasileiro padrão, mantém como está
-        formattedNumber = cleanedNumber;
-        canFormat = true;
-      }
-    } else if (cleanedNumber.length === 14) {
-      // Número com 14 dígitos – possível caso de dois "9" após o DDD (ex.: 55 + DDD + 99 + 8 dígitos)
-      if (cleanedNumber.startsWith('55')) {
-        const dddPart = cleanedNumber.substring(2, 4);
-        const afterDDD = cleanedNumber.substring(4);
-
-        if (isValidBrazilianDDD(dddPart) && /^9{2,}/.test(afterDDD)) {
-          // Remove apenas um "9" após o DDI + DDD, ficando com 55 + DDD + 9 + 8 dígitos (13 no total)
-          formattedNumber = `55${dddPart}${afterDDD.substring(1)}`;
-          canFormat = true;
-        }
-      }
-    } else if (cleanedNumber.length === 12) {
-      // Número com 12 dígitos
-      if (cleanedNumber.startsWith('55')) {
-        // Formato: 55 + DDD (2) + número com 8 dígitos (ainda sem o 9)
-        const dddPart = cleanedNumber.substring(2, 4);
-        if (isValidBrazilianDDD(dddPart)) {
-          // Adiciona o 9 após o DDI (55) + DDD, padronizando para 13 dígitos
-          formattedNumber = `55${dddPart}9${cleanedNumber.substring(4)}`;
-          canFormat = true;
-        }
-      } else {
-        const dddPart = cleanedNumber.substring(0, 2);
-        if (isValidBrazilianDDD(dddPart)) {
-          formattedNumber = `55${cleanedNumber}`;
-          canFormat = true;
-        }
-      }
-    } else if (cleanedNumber.length === 10) {
-      // Número com 10 dígitos (antigo formato sem o 9)
-      const dddPart = cleanedNumber.substring(0, 2);
-      if (isValidBrazilianDDD(dddPart)) {
-        formattedNumber = `55${cleanedNumber.substring(0, 2)}9${cleanedNumber.substring(2)}`;
-        canFormat = true;
-      }
-    }
-    
-    if (canFormat && formattedNumber) {
+    if (formattedNumber) {
       // Conseguiu formatar, adiciona aos formatados
       formattedNumbers.push({
         original: trimmedNumber,
